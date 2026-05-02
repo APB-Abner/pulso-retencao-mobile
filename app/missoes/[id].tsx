@@ -1,6 +1,7 @@
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+    ActivityIndicator,
     Alert,
     ScrollView,
     StyleSheet,
@@ -13,51 +14,105 @@ import {
     buscarMissaoPorId,
     registrarAcaoMissao,
 } from "../../services/missaoService";
-import { formatStatus } from "../../utils/formatStatus";
 import { Missao, StatusMissao } from "../../types/missao";
+import { formatStatus } from "../../utils/formatStatus";
 
 export default function FichaMissaoScreen() {
     const { id } = useLocalSearchParams<{ id: string }>();
+
     const [missao, setMissao] = useState<Missao | undefined>();
+    const [loading, setLoading] = useState(true);
+    const [erro, setErro] = useState("");
+    const [salvandoStatus, setSalvandoStatus] = useState<StatusMissao | null>(
+        null
+    );
+
+    async function carregarMissao() {
+        try {
+            setLoading(true);
+            setErro("");
+
+            const dados = await buscarMissaoPorId(Number(id));
+
+            if (!dados) {
+                setErro("Missão não encontrada.");
+                return;
+            }
+
+            setMissao(dados);
+        } catch (error) {
+            console.error(error);
+            setErro("Não foi possível carregar a missão.");
+        } finally {
+            setLoading(false);
+        }
+    }
 
     useEffect(() => {
-        async function carregar() {
-            const dados = await buscarMissaoPorId(Number(id));
-            setMissao(dados);
-        }
-
-        carregar();
+        carregarMissao();
     }, [id]);
 
     async function alterarStatus(status: StatusMissao) {
-        if (!missao) return;
+        if (!missao || salvandoStatus) return;
 
-        await registrarAcaoMissao(missao.id, {
-            tipo: status,
-            canal: missao.cliente.canalPreferido,
-            observacao: `Ação registrada pelo app do consultor: ${status}`,
-        });
+        try {
+            setSalvandoStatus(status);
 
-        const atualizada = await buscarMissaoPorId(missao.id);
-        setMissao(atualizada);
+            await registrarAcaoMissao(missao.id, {
+                tipo: status,
+                canal: missao.cliente.canalPreferido,
+                observacao: `Ação registrada pelo app do consultor: ${status}`,
+            });
 
-        Alert.alert("Ação registrada", `Status atualizado para: ${formatStatus(status)}`);
+            const atualizada = await buscarMissaoPorId(missao.id);
+
+            if (atualizada) {
+                setMissao(atualizada);
+            }
+
+            Alert.alert(
+                "Ação registrada",
+                `Status atualizado para: ${formatStatus(status)}`
+            );
+        } catch (error) {
+            console.error(error);
+            Alert.alert(
+                "Erro ao registrar ação",
+                "Não foi possível atualizar o status da missão."
+            );
+        } finally {
+            setSalvandoStatus(null);
+        }
     }
 
-    if (!missao) {
+    if (loading) {
         return (
             <View style={styles.center}>
-                <Text>Missão não encontrada.</Text>
+                <ActivityIndicator size="large" color="#2563EB" />
+                <Text style={styles.loadingText}>Carregando missão...</Text>
             </View>
         );
     }
 
+    if (erro || !missao) {
+        return (
+            <View style={styles.center}>
+                <Text style={styles.errorTitle}>Ops...</Text>
+                <Text style={styles.errorText}>
+                    {erro || "Missão não encontrada."}
+                </Text>
+
+                <TouchableOpacity style={styles.retryButton} onPress={carregarMissao}>
+                    <Text style={styles.retryButtonText}>Tentar novamente</Text>
+                </TouchableOpacity>
+            </View>
+        );
+    }
+
+    const estaSalvando = salvandoStatus !== null;
+
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-            {/* <TouchableOpacity onPress={() => router.back()}>
-                <Text style={styles.back}>← Voltar</Text>
-            </TouchableOpacity> */}
-
             <Text style={styles.title}>{missao.cliente.nome}</Text>
             <Text style={styles.subtitle}>
                 {missao.veiculo.modelo} • {missao.veiculo.ano}
@@ -92,37 +147,86 @@ export default function FichaMissaoScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Registrar ação</Text>
 
-                <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => alterarStatus("contato_feito")}
-                >
-                    <Text style={styles.actionText}>Contato feito</Text>
-                </TouchableOpacity>
+                <ActionButton
+                    label="Contato feito"
+                    status="contato_feito"
+                    loadingStatus={salvandoStatus}
+                    disabled={estaSalvando}
+                    onPress={alterarStatus}
+                />
 
-                <TouchableOpacity
-                    style={styles.actionButton}
-                    onPress={() => alterarStatus("agendado")}
-                >
-                    <Text style={styles.actionText}>Agendou serviço</Text>
-                </TouchableOpacity>
+                <ActionButton
+                    label="Agendou serviço"
+                    status="agendado"
+                    loadingStatus={salvandoStatus}
+                    disabled={estaSalvando}
+                    onPress={alterarStatus}
+                />
 
-                <TouchableOpacity
-                    style={styles.actionButtonSuccess}
-                    onPress={() => alterarStatus("recuperado")}
-                >
-                    <Text style={styles.actionText}>Cliente recuperado</Text>
-                </TouchableOpacity>
+                <ActionButton
+                    label="Cliente recuperado"
+                    status="recuperado"
+                    loadingStatus={salvandoStatus}
+                    disabled={estaSalvando}
+                    onPress={alterarStatus}
+                    variant="success"
+                />
 
-                <TouchableOpacity
-                    style={styles.actionButtonDanger}
-                    onPress={() => alterarStatus("perdido")}
-                >
-                    <Text style={styles.actionText}>Cliente perdido</Text>
-                </TouchableOpacity>
+                <ActionButton
+                    label="Cliente perdido"
+                    status="perdido"
+                    loadingStatus={salvandoStatus}
+                    disabled={estaSalvando}
+                    onPress={alterarStatus}
+                    variant="danger"
+                />
             </View>
 
-            <Text style={styles.currentStatus}>Status atual: {formatStatus(missao.status)}</Text>
+            <Text style={styles.currentStatus}>
+                Status atual: {formatStatus(missao.status)}
+            </Text>
         </ScrollView>
+    );
+}
+
+type ActionButtonProps = {
+    label: string;
+    status: StatusMissao;
+    loadingStatus: StatusMissao | null;
+    disabled: boolean;
+    onPress: (status: StatusMissao) => void;
+    variant?: "default" | "success" | "danger";
+};
+
+function ActionButton({
+    label,
+    status,
+    loadingStatus,
+    disabled,
+    onPress,
+    variant = "default",
+}: ActionButtonProps) {
+    const isLoading = loadingStatus === status;
+
+    const buttonStyle =
+        variant === "success"
+            ? styles.actionButtonSuccess
+            : variant === "danger"
+                ? styles.actionButtonDanger
+                : styles.actionButton;
+
+    return (
+        <TouchableOpacity
+            style={[buttonStyle, disabled && styles.actionButtonDisabled]}
+            disabled={disabled}
+            onPress={() => onPress(status)}
+        >
+            {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+            ) : (
+                <Text style={styles.actionText}>{label}</Text>
+            )}
+        </TouchableOpacity>
     );
 }
 
@@ -137,13 +241,36 @@ const styles = StyleSheet.create({
     },
     center: {
         flex: 1,
+        backgroundColor: "#F4F6FA",
         alignItems: "center",
         justifyContent: "center",
+        padding: 24,
     },
-    back: {
-        color: "#2563EB",
-        fontWeight: "700",
-        marginBottom: 16,
+    loadingText: {
+        color: "#6B7280",
+        marginTop: 12,
+        fontWeight: "600",
+    },
+    errorTitle: {
+        fontSize: 24,
+        fontWeight: "800",
+        color: "#111827",
+        marginBottom: 8,
+    },
+    errorText: {
+        color: "#6B7280",
+        textAlign: "center",
+        marginBottom: 18,
+    },
+    retryButton: {
+        backgroundColor: "#2563EB",
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 12,
+    },
+    retryButtonText: {
+        color: "#FFFFFF",
+        fontWeight: "800",
     },
     title: {
         fontSize: 28,
@@ -204,18 +331,27 @@ const styles = StyleSheet.create({
         padding: 14,
         borderRadius: 12,
         marginTop: 8,
+        minHeight: 48,
+        justifyContent: "center",
     },
     actionButtonSuccess: {
         backgroundColor: "#16A34A",
         padding: 14,
         borderRadius: 12,
         marginTop: 8,
+        minHeight: 48,
+        justifyContent: "center",
     },
     actionButtonDanger: {
         backgroundColor: "#DC2626",
         padding: 14,
         borderRadius: 12,
         marginTop: 8,
+        minHeight: 48,
+        justifyContent: "center",
+    },
+    actionButtonDisabled: {
+        opacity: 0.7,
     },
     actionText: {
         color: "#FFFFFF",
