@@ -1,8 +1,11 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
+import { limparSessao } from "../../services/storageService";
 import {
+  Alert,
   ActivityIndicator,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -67,10 +70,63 @@ export default function MissoesScreen() {
     );
   }
 
+  async function encerrarSessao() {
+    try {
+      await limparSessao();
+      router.replace("/?logout=1");
+    } catch (error) {
+      console.error(error);
+
+      if (Platform.OS === "web") {
+        window.alert("Nao foi possivel encerrar a sessao. Tente novamente.");
+        return;
+      }
+
+      Alert.alert(
+        "Erro ao sair",
+        "Nao foi possivel encerrar a sessao. Tente novamente."
+      );
+    }
+  }
+
+  async function sair() {
+    if (Platform.OS === "web") {
+      const confirmou = window.confirm("Deseja encerrar a sessão?");
+
+      if (confirmou) {
+        await encerrarSessao();
+      }
+
+      return;
+    }
+
+    Alert.alert("Sair", "Deseja encerrar a sessão?", [
+      {
+        text: "Cancelar",
+        style: "cancel",
+      },
+      {
+        text: "Sair",
+        style: "destructive",
+        onPress: async () => {
+          await encerrarSessao();
+        },
+      },
+    ]);
+  }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Minhas missões</Text>
-      <Text style={styles.subtitle}>Clientes em risco de abandono</Text>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>Minhas missões</Text>
+          <Text style={styles.subtitle}>Clientes em risco de abandono</Text>
+        </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={sair}>
+          <Text style={styles.logoutText}>Sair</Text>
+        </TouchableOpacity>
+      </View>
 
       <FlatList
         data={missoes}
@@ -175,7 +231,6 @@ const styles = StyleSheet.create({
   subtitle: {
     color: "#6B7280",
     marginTop: 4,
-    marginBottom: 16,
   },
   list: {
     gap: 12,
@@ -264,5 +319,23 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     textAlign: "center",
     fontWeight: "700",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 12,
+    marginBottom: 16,
+  },
+  logoutButton: {
+    backgroundColor: "#E5E7EB",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+  },
+  logoutText: {
+    color: "#111827",
+    fontWeight: "800",
+    fontSize: 12,
   },
 });

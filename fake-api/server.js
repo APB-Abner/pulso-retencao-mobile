@@ -65,14 +65,23 @@ app.get("/", (req, res) => {
 });
 
 app.post("/auth/login", (req, res) => {
-    const { email } = req.body;
+    const { email, senha } = req.body;
+
+    const emailValido = "consultor@ford.com";
+    const senhaValida = "123456";
+
+    if (email !== emailValido || senha !== senhaValida) {
+        return res.status(401).json({
+            message: "E-mail ou senha inválidos",
+        });
+    }
 
     res.json({
         token: "fake-token-consultor",
         usuario: {
             id: 1,
             nome: "Consultor 01",
-            email: email || "consultor@ford.com",
+            email: emailValido,
         },
     });
 });

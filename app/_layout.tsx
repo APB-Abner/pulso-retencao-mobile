@@ -11,7 +11,7 @@ export default function RootLayout() {
       />
 
       <Stack.Screen
-        name="(tabs)"
+        name="consultor"
         options={{
           headerShown: false,
         }}
