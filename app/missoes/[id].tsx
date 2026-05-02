@@ -10,9 +10,10 @@ import {
 } from "react-native";
 
 import {
-    atualizarStatusMissao,
     buscarMissaoPorId,
+    registrarAcaoMissao,
 } from "../../services/missaoService";
+import { formatStatus } from "../../utils/formatStatus";
 import { Missao, StatusMissao } from "../../types/missao";
 
 export default function FichaMissaoScreen() {
@@ -31,10 +32,16 @@ export default function FichaMissaoScreen() {
     async function alterarStatus(status: StatusMissao) {
         if (!missao) return;
 
-        const atualizada = await atualizarStatusMissao(missao.id, status);
+        await registrarAcaoMissao(missao.id, {
+            tipo: status,
+            canal: missao.cliente.canalPreferido,
+            observacao: `Ação registrada pelo app do consultor: ${status}`,
+        });
+
+        const atualizada = await buscarMissaoPorId(missao.id);
         setMissao(atualizada);
 
-        Alert.alert("Ação registrada", `Status atualizado para: ${status}`);
+        Alert.alert("Ação registrada", `Status atualizado para: ${formatStatus(status)}`);
     }
 
     if (!missao) {
@@ -114,7 +121,7 @@ export default function FichaMissaoScreen() {
                 </TouchableOpacity>
             </View>
 
-            <Text style={styles.currentStatus}>Status atual: {missao.status}</Text>
+            <Text style={styles.currentStatus}>Status atual: {formatStatus(missao.status)}</Text>
         </ScrollView>
     );
 }

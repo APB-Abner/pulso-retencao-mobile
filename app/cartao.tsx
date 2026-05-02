@@ -9,17 +9,13 @@ import {
     View,
 } from "react-native";
 
-import { listarMissoes } from "../services/missaoService";
+import { buscarMissaoPorCodigoCartao } from "../services/missaoService";
 
 export default function CartaoScreen() {
     const [codigo, setCodigo] = useState("");
 
     async function buscarCartao() {
-        const missoes = await listarMissoes();
-
-        const missao = missoes.find(
-            (item) => item.codigoCartao.toLowerCase() === codigo.toLowerCase().trim()
-        );
+        const missao = await buscarMissaoPorCodigoCartao(codigo);
 
         if (!missao) {
             Alert.alert("Cartão não encontrado", "Verifique o código informado.");

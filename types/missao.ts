@@ -41,3 +41,9 @@ export type Missao = {
     responsavel: string;
     status: StatusMissao;
 };
+
+export type RegistrarAcaoPayload = {
+    tipo: StatusMissao;
+    canal: "whatsapp" | "telefone" | "email";
+    observacao?: string;
+};
