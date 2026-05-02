@@ -1,8 +1,10 @@
+import { CameraView, useCameraPermissions } from "expo-camera";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
     ActivityIndicator,
     Alert,
+    Platform,
     StyleSheet,
     Text,
     TextInput,
@@ -16,9 +18,34 @@ export default function CartaoScreen() {
     const [codigo, setCodigo] = useState("");
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState("");
+    const [modoCamera, setModoCamera] = useState(false);
+    const [jaEscaneou, setJaEscaneou] = useState(false);
 
-    async function buscarCartao() {
-        const codigoLimpo = codigo.trim();
+    const [permission, requestPermission] = useCameraPermissions();
+
+    async function abrirCamera() {
+        setErro("");
+
+        if (Platform.OS === "web") {
+            setModoCamera(true);
+            return;
+        }
+
+        if (!permission?.granted) {
+            const resposta = await requestPermission();
+
+            if (!resposta.granted) {
+                setErro("Permissão de câmera negada.");
+                return;
+            }
+        }
+
+        setJaEscaneou(false);
+        setModoCamera(true);
+    }
+
+    async function buscarCartao(codigoRecebido?: string) {
+        const codigoLimpo = (codigoRecebido ?? codigo).trim();
 
         if (!codigoLimpo) {
             setErro("Informe o código do cartão.");
@@ -33,9 +60,12 @@ export default function CartaoScreen() {
 
             if (!missao) {
                 setErro("Cartão não encontrado. Verifique o código informado.");
+                setModoCamera(false);
+                setJaEscaneou(false);
                 return;
             }
 
+            setModoCamera(false);
             router.push(`/missoes/${missao.id}`);
         } catch (error) {
             console.error(error);
@@ -43,17 +73,84 @@ export default function CartaoScreen() {
                 "Erro ao buscar cartão",
                 "Não foi possível consultar o cartão agora."
             );
+            setJaEscaneou(false);
         } finally {
             setLoading(false);
         }
+    }
+
+    async function aoEscanearCodigo(resultado: { data: string }) {
+        if (jaEscaneou || loading) return;
+
+        setJaEscaneou(true);
+
+        const codigoLido = resultado.data.trim();
+        setCodigo(codigoLido);
+
+        await buscarCartao(codigoLido);
+    }
+
+    if (modoCamera) {
+        return (
+            <View style={styles.cameraContainer}>
+                <CameraView
+                    style={styles.camera}
+                    facing="back"
+                    barcodeScannerSettings={{
+                        barcodeTypes: ["qr", "code128", "ean13"],
+                    }}
+                    onBarcodeScanned={jaEscaneou ? undefined : aoEscanearCodigo}
+                />
+
+                <View style={styles.cameraOverlay}>
+                    <Text style={styles.cameraTitle}>Aponte para o QR Code</Text>
+                    <Text style={styles.cameraSubtitle}>
+                        O código do cartão será lido automaticamente.
+                    </Text>
+
+                    <View style={styles.scanFrame} />
+
+                    {loading ? (
+                        <View style={styles.loadingCard}>
+                            <ActivityIndicator color="#FFFFFF" />
+                            <Text style={styles.loadingCardText}>Buscando missão...</Text>
+                        </View>
+                    ) : null}
+
+                    <TouchableOpacity
+                        style={styles.closeCameraButton}
+                        onPress={() => {
+                            setModoCamera(false);
+                            setJaEscaneou(false);
+                        }}
+                    >
+                        <Text style={styles.closeCameraText}>Digitar manualmente</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
     }
 
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Ler cartão</Text>
             <Text style={styles.subtitle}>
-                Digite o código do Cartão de Recuperação.
+                Escaneie ou digite o código do Cartão de Recuperação.
             </Text>
+
+            <TouchableOpacity
+                style={styles.qrButton}
+                onPress={abrirCamera}
+                disabled={loading}
+            >
+                <Text style={styles.qrButtonText}>Escanear QR Code</Text>
+            </TouchableOpacity>
+
+            <View style={styles.separator}>
+                <View style={styles.line} />
+                <Text style={styles.separatorText}>ou</Text>
+                <View style={styles.line} />
+            </View>
 
             <TextInput
                 style={[styles.input, erro ? styles.inputError : null]}
@@ -71,7 +168,7 @@ export default function CartaoScreen() {
 
             <TouchableOpacity
                 style={[styles.button, loading && styles.buttonDisabled]}
-                onPress={buscarCartao}
+                onPress={() => buscarCartao()}
                 disabled={loading}
             >
                 {loading ? (
@@ -104,6 +201,32 @@ const styles = StyleSheet.create({
         color: "#6B7280",
         marginTop: 8,
         marginBottom: 20,
+    },
+    qrButton: {
+        backgroundColor: "#111827",
+        padding: 14,
+        borderRadius: 12,
+        marginBottom: 18,
+    },
+    qrButtonText: {
+        color: "#FFFFFF",
+        textAlign: "center",
+        fontWeight: "800",
+    },
+    separator: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 12,
+        marginBottom: 18,
+    },
+    line: {
+        flex: 1,
+        height: 1,
+        backgroundColor: "#D1D5DB",
+    },
+    separatorText: {
+        color: "#6B7280",
+        fontWeight: "700",
     },
     input: {
         backgroundColor: "#FFFFFF",
@@ -144,5 +267,63 @@ const styles = StyleSheet.create({
     },
     backDisabled: {
         opacity: 0.5,
+    },
+    cameraContainer: {
+        flex: 1,
+        backgroundColor: "#000000",
+    },
+    camera: {
+        flex: 1,
+    },
+    cameraOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: "center",
+        alignItems: "center",
+        padding: 24,
+        backgroundColor: "rgba(0, 0, 0, 0.25)",
+    },
+    cameraTitle: {
+        color: "#FFFFFF",
+        fontSize: 24,
+        fontWeight: "900",
+        textAlign: "center",
+    },
+    cameraSubtitle: {
+        color: "#E5E7EB",
+        marginTop: 8,
+        textAlign: "center",
+        marginBottom: 28,
+    },
+    scanFrame: {
+        width: 220,
+        height: 220,
+        borderWidth: 3,
+        borderColor: "#FFFFFF",
+        borderRadius: 20,
+        backgroundColor: "transparent",
+    },
+    loadingCard: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 10,
+        backgroundColor: "rgba(17, 24, 39, 0.9)",
+        padding: 12,
+        borderRadius: 12,
+        marginTop: 20,
+    },
+    loadingCardText: {
+        color: "#FFFFFF",
+        fontWeight: "700",
+    },
+    closeCameraButton: {
+        backgroundColor: "#FFFFFF",
+        paddingVertical: 12,
+        paddingHorizontal: 18,
+        borderRadius: 999,
+        marginTop: 28,
+    },
+    closeCameraText: {
+        color: "#111827",
+        fontWeight: "800",
     },
 });
