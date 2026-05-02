@@ -1,7 +1,7 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { formatStatus } from "../../utils/formatStatus"; 
 import {
+  ActivityIndicator,
   FlatList,
   StyleSheet,
   Text,
@@ -11,18 +11,31 @@ import {
 
 import { listarMissoes } from "../../services/missaoService";
 import { Missao } from "../../types/missao";
+import { formatStatus } from "../../utils/formatStatus";
 
 export default function MissoesScreen() {
   const [missoes, setMissoes] = useState<Missao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+
+  async function carregarMissoes() {
+    try {
+      setLoading(true);
+      setErro("");
+
+      const dados = await listarMissoes();
+      setMissoes(dados);
+    } catch (error) {
+      console.error(error);
+      setErro("Não foi possível carregar as missões.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
-      async function carregar() {
-        const dados = await listarMissoes();
-        setMissoes(dados);
-      }
-
-      carregar();
+      carregarMissoes();
     }, [])
   );
 
@@ -30,6 +43,28 @@ export default function MissoesScreen() {
     if (risco === "alto") return "#DC2626";
     if (risco === "medio") return "#F59E0B";
     return "#16A34A";
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Carregando missões...</Text>
+      </View>
+    );
+  }
+
+  if (erro) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Ops...</Text>
+        <Text style={styles.errorText}>{erro}</Text>
+
+        <TouchableOpacity style={styles.retryButton} onPress={carregarMissoes}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    );
   }
 
   return (
@@ -41,6 +76,14 @@ export default function MissoesScreen() {
         data={missoes}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyTitle}>Nenhuma missão encontrada</Text>
+            <Text style={styles.emptyText}>
+              Quando houver clientes em risco, eles aparecerão aqui.
+            </Text>
+          </View>
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             style={styles.card}
@@ -66,7 +109,9 @@ export default function MissoesScreen() {
             <Text style={styles.reason}>{item.motivoPrincipal}</Text>
 
             <View style={styles.footer}>
-              <Text style={styles.status}>Status: {formatStatus(item.status)}</Text>
+              <Text style={styles.status}>
+                Status: {formatStatus(item.status)}
+              </Text>
               <Text style={styles.deadline}>Prazo: {item.prazo}</Text>
             </View>
           </TouchableOpacity>
@@ -89,6 +134,39 @@ const styles = StyleSheet.create({
     backgroundColor: "#F4F6FA",
     padding: 20,
   },
+  center: {
+    flex: 1,
+    backgroundColor: "#F4F6FA",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  loadingText: {
+    color: "#6B7280",
+    marginTop: 12,
+    fontWeight: "600",
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  errorText: {
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 18,
+  },
+  retryButton: {
+    backgroundColor: "#2563EB",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
+  },
   title: {
     fontSize: 26,
     fontWeight: "800",
@@ -102,6 +180,23 @@ const styles = StyleSheet.create({
   list: {
     gap: 12,
     paddingBottom: 90,
+  },
+  emptyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  emptyTitle: {
+    color: "#111827",
+    fontWeight: "800",
+    fontSize: 16,
+  },
+  emptyText: {
+    color: "#6B7280",
+    marginTop: 6,
+    lineHeight: 20,
   },
   card: {
     backgroundColor: "#FFFFFF",
@@ -163,7 +258,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 20,
     right: 20,
-    bottom: 20,
+    bottom: 40,
   },
   scanButtonText: {
     color: "#FFFFFF",
