@@ -1,98 +1,173 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
+import { formatStatus } from "../../utils/formatStatus"; 
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { listarMissoes } from "../../services/missaoService";
+import { Missao } from "../../types/missao";
 
-export default function HomeScreen() {
+export default function MissoesScreen() {
+  const [missoes, setMissoes] = useState<Missao[]>([]);
+
+  useFocusEffect(
+    useCallback(() => {
+      async function carregar() {
+        const dados = await listarMissoes();
+        setMissoes(dados);
+      }
+
+      carregar();
+    }, [])
+  );
+
+  function getRiskColor(risco: Missao["risco"]) {
+    if (risco === "alto") return "#DC2626";
+    if (risco === "medio") return "#F59E0B";
+    return "#16A34A";
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <View style={styles.container}>
+      <Text style={styles.title}>Minhas missões</Text>
+      <Text style={styles.subtitle}>Clientes em risco de abandono</Text>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      <FlatList
+        data={missoes}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.card}
+            onPress={() => router.push(`/missoes/${item.id}`)}
+          >
+            <View style={styles.cardHeader}>
+              <Text style={styles.clientName}>{item.cliente.nome}</Text>
+
+              <View
+                style={[
+                  styles.riskBadge,
+                  { backgroundColor: getRiskColor(item.risco) },
+                ]}
+              >
+                <Text style={styles.riskText}>{item.risco.toUpperCase()}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.vehicle}>
+              {item.veiculo.modelo} • {item.veiculo.ano}
+            </Text>
+
+            <Text style={styles.reason}>{item.motivoPrincipal}</Text>
+
+            <View style={styles.footer}>
+              <Text style={styles.status}>Status: {formatStatus(item.status)}</Text>
+              <Text style={styles.deadline}>Prazo: {item.prazo}</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      />
+
+      <TouchableOpacity
+        style={styles.scanButton}
+        onPress={() => router.push("/cartao")}
+      >
+        <Text style={styles.scanButtonText}>Ler / digitar cartão</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#F4F6FA",
+    padding: 20,
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  title: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#111827",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  subtitle: {
+    color: "#6B7280",
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  list: {
+    gap: 12,
+    paddingBottom: 90,
+  },
+  card: {
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  clientName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    flex: 1,
+  },
+  riskBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  riskText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  vehicle: {
+    color: "#374151",
+    marginTop: 6,
+    fontWeight: "600",
+  },
+  reason: {
+    color: "#6B7280",
+    marginTop: 10,
+    lineHeight: 20,
+  },
+  footer: {
+    marginTop: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  status: {
+    color: "#374151",
+    fontSize: 12,
+  },
+  deadline: {
+    color: "#374151",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  scanButton: {
+    backgroundColor: "#111827",
+    padding: 14,
+    borderRadius: 14,
+    position: "absolute",
+    left: 20,
+    right: 20,
+    bottom: 20,
+  },
+  scanButtonText: {
+    color: "#FFFFFF",
+    textAlign: "center",
+    fontWeight: "700",
   },
 });
