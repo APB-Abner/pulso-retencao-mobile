@@ -1,30 +1,72 @@
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { listarMissoes } from "../../services/missaoService";
-import { Missao } from "../../types/missao";
+import { buscarIndicadoresConsultor } from "../../services/indicadorService";
+import { buscarUsuario } from "../../services/storageService";
+import { IndicadoresConsultor } from "../../types/indicador";
 
 export default function IndicadoresScreen() {
-  const [missoes, setMissoes] = useState<Missao[]>([]);
+  const [indicadores, setIndicadores] = useState<IndicadoresConsultor | null>(
+    null
+  );
+  const [loading, setLoading] = useState(true);
+  const [erro, setErro] = useState("");
+
+  async function carregarIndicadores() {
+    try {
+      setLoading(true);
+      setErro("");
+
+      const usuario = await buscarUsuario();
+      const consultorId = usuario?.id ?? 1;
+
+      const dados = await buscarIndicadoresConsultor(consultorId);
+      setIndicadores(dados);
+    } catch (error) {
+      console.error(error);
+      setErro("Não foi possível carregar os indicadores.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useFocusEffect(
     useCallback(() => {
-      async function carregar() {
-        const dados = await listarMissoes();
-        setMissoes(dados);
-      }
-
-      carregar();
+      carregarIndicadores();
     }, [])
   );
 
-  const total = missoes.length;
-  const altoRisco = missoes.filter((m) => m.risco === "alto").length;
-  const contatosFeitos = missoes.filter((m) => m.status === "contato_feito").length;
-  const agendados = missoes.filter((m) => m.status === "agendado").length;
-  const recuperados = missoes.filter((m) => m.status === "recuperado").length;
-  const perdidos = missoes.filter((m) => m.status === "perdido").length;
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Carregando indicadores...</Text>
+      </View>
+    );
+  }
+
+  if (erro || !indicadores) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Ops...</Text>
+        <Text style={styles.errorText}>{erro}</Text>
+
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={carregarIndicadores}
+        >
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -32,12 +74,15 @@ export default function IndicadoresScreen() {
       <Text style={styles.subtitle}>Resumo das missões do consultor</Text>
 
       <View style={styles.grid}>
-        <IndicatorCard value={total} label="Missões" />
-        <IndicatorCard value={altoRisco} label="Alto risco" />
-        <IndicatorCard value={contatosFeitos} label="Contatos feitos" />
-        <IndicatorCard value={agendados} label="Agendados" />
-        <IndicatorCard value={recuperados} label="Recuperados" />
-        <IndicatorCard value={perdidos} label="Perdidos" />
+        <IndicatorCard value={indicadores.total} label="Missões" />
+        <IndicatorCard value={indicadores.altoRisco} label="Alto risco" />
+        <IndicatorCard
+          value={indicadores.contatosFeitos}
+          label="Contatos feitos"
+        />
+        <IndicatorCard value={indicadores.agendados} label="Agendados" />
+        <IndicatorCard value={indicadores.recuperados} label="Recuperados" />
+        <IndicatorCard value={indicadores.perdidos} label="Perdidos" />
       </View>
     </View>
   );
@@ -57,6 +102,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F4F6FA",
     padding: 20,
+  },
+  center: {
+    flex: 1,
+    backgroundColor: "#F4F6FA",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+  },
+  loadingText: {
+    color: "#6B7280",
+    marginTop: 12,
+    fontWeight: "600",
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: "800",
+    color: "#111827",
+    marginBottom: 8,
+  },
+  errorText: {
+    color: "#6B7280",
+    textAlign: "center",
+    marginBottom: 18,
+  },
+  retryButton: {
+    backgroundColor: "#2563EB",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "800",
   },
   title: {
     fontSize: 26,
