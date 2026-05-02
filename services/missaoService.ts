@@ -43,8 +43,16 @@ export async function buscarMissaoPorCodigoCartao(
         );
     }
 
-    const response = await api.get<Missao>(`/cartoes/${codigoCartao}`);
-    return response.data;
+    try {
+        const response = await api.get<Missao>(`/cartoes/${codigoCartao}`);
+        return response.data;
+    } catch (error: any) {
+        if (error.response?.status === 404) {
+            return undefined;
+        }
+
+        throw error;
+    }
 }
 
 export async function atualizarStatusMissao(

@@ -1,8 +1,8 @@
 import axios from "axios";
 
-export const USE_MOCK = true;
+export const USE_MOCK = false;
 
 export const api = axios.create({
-    baseURL: "http://192.168.0.10:8000",
+    baseURL: "http://localhost:3333",
     timeout: 8000,
 });
