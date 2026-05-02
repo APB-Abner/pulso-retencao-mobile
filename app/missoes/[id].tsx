@@ -6,6 +6,7 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
@@ -27,6 +28,7 @@ export default function FichaMissaoScreen() {
     const [salvandoStatus, setSalvandoStatus] = useState<StatusMissao | null>(
         null
     );
+    const [observacao, setObservacao] = useState("");
 
     async function carregarMissao() {
         try {
@@ -59,10 +61,14 @@ export default function FichaMissaoScreen() {
         try {
             setSalvandoStatus(status);
 
+            const observacaoFinal = observacao.trim()
+                ? observacao.trim()
+                : `Ação registrada pelo app do consultor: ${formatStatus(status)}`;
+
             await registrarAcaoMissao(missao.id, {
                 tipo: status,
                 canal: missao.cliente.canalPreferido,
-                observacao: `Ação registrada pelo app do consultor: ${formatStatus(status)}`,
+                observacao: observacaoFinal,
             });
 
             const atualizada = await buscarMissaoPorId(missao.id);
@@ -70,6 +76,8 @@ export default function FichaMissaoScreen() {
             if (atualizada) {
                 setMissao(atualizada);
             }
+
+            setObservacao("");
 
             Alert.alert(
                 "Ação registrada",
@@ -111,6 +119,7 @@ export default function FichaMissaoScreen() {
     }
 
     const estaSalvando = salvandoStatus !== null;
+    const historico = missao.historico ?? [];
 
     return (
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -147,6 +156,17 @@ export default function FichaMissaoScreen() {
 
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Registrar ação</Text>
+
+                <TextInput
+                    style={styles.observationInput}
+                    placeholder="Ex: Cliente pediu retorno amanhã às 10h."
+                    value={observacao}
+                    onChangeText={setObservacao}
+                    multiline
+                    numberOfLines={3}
+                    editable={!estaSalvando}
+                    textAlignVertical="top"
+                />
 
                 <ActionButton
                     label="Contato feito"
@@ -186,23 +206,36 @@ export default function FichaMissaoScreen() {
             <View style={styles.section}>
                 <Text style={styles.sectionTitle}>Histórico recente</Text>
 
-                {missao.historico && missao.historico.length > 0 ? (
-                    missao.historico.map((acao) => (
-                        <View key={acao.id} style={styles.historyItem}>
-                            <View style={styles.historyHeader}>
-                                <Text style={styles.historyTitle}>{formatStatus(acao.tipo)}</Text>
-                                <Text style={styles.historyDate}>
-                                    {formatDateTimeBR(acao.criadoEm)}
-                                </Text>
+                {historico.length > 0 ? (
+                    <>
+                        {historico.slice(0, 3).map((acao) => (
+                            <View key={acao.id} style={styles.historyItem}>
+                                <View style={styles.historyHeader}>
+                                    <Text style={styles.historyTitle}>
+                                        {formatStatus(acao.tipo)}
+                                    </Text>
+
+                                    <Text style={styles.historyDate}>
+                                        {formatDateTimeBR(acao.criadoEm)}
+                                    </Text>
+                                </View>
+
+                                <Text style={styles.historyText}>Canal: {acao.canal}</Text>
+
+                                {acao.observacao ? (
+                                    <Text style={styles.historyObservation}>
+                                        {acao.observacao}
+                                    </Text>
+                                ) : null}
                             </View>
+                        ))}
 
-                            <Text style={styles.historyText}>Canal: {acao.canal}</Text>
-
-                            {acao.observacao ? (
-                                <Text style={styles.historyObservation}>{acao.observacao}</Text>
-                            ) : null}
-                        </View>
-                    ))
+                        {historico.length > 3 ? (
+                            <Text style={styles.historyLimitText}>
+                                Exibindo as 3 ações mais recentes.
+                            </Text>
+                        ) : null}
+                    </>
                 ) : (
                     <Text style={styles.emptyHistory}>
                         Nenhuma ação registrada ainda.
@@ -427,5 +460,22 @@ const styles = StyleSheet.create({
     emptyHistory: {
         color: "#6B7280",
         fontStyle: "italic",
+    },
+    observationInput: {
+        backgroundColor: "#F9FAFB",
+        borderRadius: 12,
+        padding: 12,
+        borderWidth: 1,
+        borderColor: "#D1D5DB",
+        minHeight: 82,
+        marginBottom: 8,
+        color: "#111827",
+    },
+    historyLimitText: {
+        color: "#6B7280",
+        fontSize: 12,
+        fontWeight: "600",
+        marginTop: 12,
+        textAlign: "center",
     },
 });
