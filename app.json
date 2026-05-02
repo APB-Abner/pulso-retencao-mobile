@@ -38,6 +38,13 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que o Ford Service Pulse acesse a câmera",
+          "barcodeScannerEnabled": true
+        }
       ]
     ],
     "experiments": {

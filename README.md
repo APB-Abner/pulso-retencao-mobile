@@ -1,50 +1,128 @@
-# Welcome to your Expo app 👋
+# Ford Service Pulse — Aplicativo do Consultor
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Aplicativo mobile desenvolvido em React Native com Expo para apoiar consultores no processo de retenção ativa de clientes em risco de abandono.
 
-## Get started
+O app permite visualizar missões de retenção, abrir a ficha do cliente, registrar ações realizadas, consultar histórico, buscar missões por Cartão de Recuperação e acompanhar indicadores do consultor.
 
-1. Install dependencies
+## Tecnologias
 
-   ```bash
-   npm install
-   ```
+- React Native
+- Expo
+- Expo Router
+- TypeScript
+- Axios
+- AsyncStorage
+- Expo Camera
+- API fake com Express
 
-2. Start the app
+## Funcionalidades
 
-   ```bash
-   npx expo start
-   ```
+- Login semi-real com validação de usuário e senha
+- Persistência de sessão com AsyncStorage
+- Logout com limpeza de sessão
+- Lista de missões do consultor
+- Ficha detalhada da missão
+- Registro de ações e alteração de status
+- Campo de observação manual
+- Histórico recente de ações
+- Busca por código do Cartão de Recuperação
+- Leitura de QR Code
+- Indicadores do consultor vindos da API
 
-In the output, you'll find options to open the app in a
+## Credenciais de demonstração
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+```txt
+E-mail: consultor@ford.com
+Senha: 123456
+````
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## Como rodar a API fake
 
-## Get a fresh project
-
-When you're ready, run:
+Entre na pasta da API:
 
 ```bash
-npm run reset-project
+cd fake-api
+npm install
+npm start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+A API roda em:
 
-## Learn more
+```txt
+http://localhost:3333
+```
 
-To learn more about developing your project with Expo, look at the following resources:
+Principais endpoints:
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+```txt
+POST   /auth/login
+GET    /missoes
+GET    /missoes/:id
+GET    /cartoes/:codigo
+PATCH  /missoes/:id/status
+POST   /missoes/:id/acoes
+GET    /indicadores/consultor/:id
+```
 
-## Join the community
+## Como rodar o app
 
-Join our community of developers creating universal apps.
+Na raiz do projeto mobile:
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+```bash
+npm install
+npx expo start
+```
+
+Para web:
+
+```bash
+npx expo start --web
+```
+
+## Configuração da API
+
+O arquivo responsável pela conexão é:
+
+```txt
+services/api.ts
+```
+
+Exemplo:
+
+```ts
+export const USE_MOCK = false;
+
+export const api = axios.create({
+  baseURL: "http://localhost:3333",
+  timeout: 8000,
+});
+```
+
+Para testar em celular físico, trocar `localhost` pelo IP da máquina:
+
+```txt
+http://SEU_IP_LOCAL:3333
+```
+
+## Fluxo de demonstração
+
+1. Abrir o aplicativo.
+2. Fazer login com o consultor.
+3. Visualizar as missões de retenção.
+4. Abrir uma missão de alto risco.
+5. Inserir uma observação.
+6. Registrar uma ação, como "Contato feito" ou "Cliente recuperado".
+7. Ver o histórico atualizado.
+8. Voltar para a lista e confirmar o novo status.
+9. Abrir os indicadores e validar a atualização dos números.
+10. Acessar "Ler / digitar cartão".
+11. Buscar por `CARD-001` ou escanear QR Code.
+12. Abrir a ficha correspondente.
+
+## Relação com a solução
+
+O aplicativo representa a frente mobile da solução Ford Service Pulse. Ele transforma o Cartão de Recuperação em uma ação registrada, permitindo que o consultor execute o contato com o cliente e gere rastreabilidade para os indicadores de retenção.
+
+## Status do MVP
+
+O MVP mobile está funcional com API fake local e pronto para integração com backend real.
