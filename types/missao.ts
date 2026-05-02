@@ -40,10 +40,18 @@ export type Missao = {
     prazo: string;
     responsavel: string;
     status: StatusMissao;
+    historico?: HistoricoAcao[];
 };
 
 export type RegistrarAcaoPayload = {
     tipo: StatusMissao;
     canal: "whatsapp" | "telefone" | "email";
     observacao?: string;
+};
+export type HistoricoAcao = {
+    id: number;
+    tipo: StatusMissao;
+    canal: "whatsapp" | "telefone" | "email";
+    observacao?: string;
+    criadoEm: string;
 };

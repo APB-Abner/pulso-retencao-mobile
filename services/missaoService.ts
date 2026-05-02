@@ -79,7 +79,24 @@ export async function registrarAcaoMissao(
     payload: RegistrarAcaoPayload
 ): Promise<void> {
     if (USE_MOCK) {
-        await atualizarStatusMissao(id, payload.tipo);
+        const novaAcao = {
+            id: Date.now(),
+            tipo: payload.tipo,
+            canal: payload.canal,
+            observacao: payload.observacao || "",
+            criadoEm: new Date().toISOString(),
+        };
+
+        missoes = missoes.map((missao) =>
+            missao.id === id
+                ? {
+                    ...missao,
+                    status: payload.tipo,
+                    historico: [novaAcao, ...(missao.historico || [])],
+                }
+                : missao
+        );
+
         return;
     }
 

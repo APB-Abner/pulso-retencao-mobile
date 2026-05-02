@@ -22,6 +22,7 @@ export const missoesMock: Missao[] = [
         prazo: "Hoje",
         responsavel: "Consultor 01",
         status: "em_risco",
+        historico: [],
     },
     {
         id: 2,
@@ -44,5 +45,6 @@ export const missoesMock: Missao[] = [
         prazo: "Amanhã",
         responsavel: "Consultor 01",
         status: "assumido",
+        historico: [],
     },
 ];

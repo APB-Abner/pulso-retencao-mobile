@@ -14,6 +14,7 @@ import {
     buscarMissaoPorId,
     registrarAcaoMissao,
 } from "../../services/missaoService";
+import { formatDateTimeBR } from "../../utils/formatDate";
 import { Missao, StatusMissao } from "../../types/missao";
 import { formatStatus } from "../../utils/formatStatus";
 
@@ -61,7 +62,7 @@ export default function FichaMissaoScreen() {
             await registrarAcaoMissao(missao.id, {
                 tipo: status,
                 canal: missao.cliente.canalPreferido,
-                observacao: `Ação registrada pelo app do consultor: ${status}`,
+                observacao: `Ação registrada pelo app do consultor: ${formatStatus(status)}`,
             });
 
             const atualizada = await buscarMissaoPorId(missao.id);
@@ -180,6 +181,33 @@ export default function FichaMissaoScreen() {
                     onPress={alterarStatus}
                     variant="danger"
                 />
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Histórico recente</Text>
+
+                {missao.historico && missao.historico.length > 0 ? (
+                    missao.historico.map((acao) => (
+                        <View key={acao.id} style={styles.historyItem}>
+                            <View style={styles.historyHeader}>
+                                <Text style={styles.historyTitle}>{formatStatus(acao.tipo)}</Text>
+                                <Text style={styles.historyDate}>
+                                    {formatDateTimeBR(acao.criadoEm)}
+                                </Text>
+                            </View>
+
+                            <Text style={styles.historyText}>Canal: {acao.canal}</Text>
+
+                            {acao.observacao ? (
+                                <Text style={styles.historyObservation}>{acao.observacao}</Text>
+                            ) : null}
+                        </View>
+                    ))
+                ) : (
+                    <Text style={styles.emptyHistory}>
+                        Nenhuma ação registrada ainda.
+                    </Text>
+                )}
             </View>
 
             <Text style={styles.currentStatus}>
@@ -363,5 +391,41 @@ const styles = StyleSheet.create({
         color: "#374151",
         fontWeight: "700",
         marginTop: 12,
+    },
+    historyItem: {
+        borderTopWidth: 1,
+        borderTopColor: "#E5E7EB",
+        paddingTop: 12,
+        marginTop: 12,
+    },
+    historyHeader: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 12,
+        marginBottom: 6,
+    },
+    historyTitle: {
+        color: "#111827",
+        fontWeight: "800",
+        flex: 1,
+    },
+    historyDate: {
+        color: "#6B7280",
+        fontSize: 12,
+        fontWeight: "600",
+    },
+    historyText: {
+        color: "#374151",
+        fontSize: 13,
+        marginBottom: 4,
+    },
+    historyObservation: {
+        color: "#6B7280",
+        fontSize: 13,
+        lineHeight: 19,
+    },
+    emptyHistory: {
+        color: "#6B7280",
+        fontStyle: "italic",
     },
 });
