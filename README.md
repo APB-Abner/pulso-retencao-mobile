@@ -1,8 +1,8 @@
-# Ford Service Pulse — Aplicativo do Consultor
+# Pulso de Retenção Ford - Aplicativo do Consultor
 
-Aplicativo mobile desenvolvido em React Native com Expo para apoiar consultores no processo de retenção ativa de clientes em risco de abandono.
+Aplicativo mobile em React Native com Expo para apoiar a execução do Pulso de Retenção Ford.
 
-O app permite visualizar missões de retenção, abrir a ficha do cliente, registrar ações realizadas, consultar histórico, buscar missões por Cartão de Recuperação e acompanhar indicadores do consultor.
+O app é a interface do consultor: recebe missões priorizadas pelo Radar de Retenção, abre o Cartão de Recuperação, exibe a saída do Motor de Retenção, registra ações e gera Memória de Resultado para indicadores de retenção.
 
 ## Tecnologias
 
@@ -17,28 +17,49 @@ O app permite visualizar missões de retenção, abrir a ficha do cliente, regis
 
 ## Funcionalidades
 
-- Login semi-real com validação de usuário e senha
-- Persistência de sessão com AsyncStorage
-- Logout com limpeza de sessão
-- Lista de missões do consultor
-- Ficha detalhada da missão
-- Registro de ações e alteração de status
-- Campo de observação manual
+- Login de demonstração com persistência de sessão
+- Lista de missões priorizadas pelo Radar de Retenção
+- Ficha da missão com risco, score, perfil, motivo e ação recomendada
+- Visão 360 mínima de cliente e veículo
+- Leitura ou digitação do Cartão de Recuperação
+- Registro de ações: assumir, contato feito, resposta recebida, agendar, reprogramar, recuperar e perder
+- Resultado estruturado com comparecimento, serviço pago, receita estimada e impacto VIN Share
 - Histórico recente de ações
-- Busca por código do Cartão de Recuperação
-- Leitura de QR Code
-- Indicadores do consultor vindos da API
+- Indicadores de contato, agendamento, recuperação, perda, receita e VIN Share
 
 ## Credenciais de demonstração
 
 ```txt
 E-mail: consultor@ford.com
 Senha: 123456
-````
+```
+
+## Configuração da API
+
+Copie `.env.example` para `.env` e ajuste conforme o modo da demo.
+
+Para consumir a API fake local:
+
+```txt
+EXPO_PUBLIC_USE_MOCK=false
+EXPO_PUBLIC_API_BASE_URL=http://localhost:3333
+```
+
+Para celular físico, troque `localhost` pelo IP da máquina na rede local:
+
+```txt
+EXPO_PUBLIC_API_BASE_URL=http://SEU_IP_LOCAL:3333
+```
+
+Para demo sem backend:
+
+```txt
+EXPO_PUBLIC_USE_MOCK=true
+```
+
+Se `EXPO_PUBLIC_API_BASE_URL` não estiver configurada, o app usa mock local por segurança.
 
 ## Como rodar a API fake
-
-Entre na pasta da API:
 
 ```bash
 cd fake-api
@@ -57,16 +78,17 @@ Principais endpoints:
 ```txt
 POST   /auth/login
 GET    /missoes
+GET    /radar/prioridades
 GET    /missoes/:id
 GET    /cartoes/:codigo
 PATCH  /missoes/:id/status
 POST   /missoes/:id/acoes
+POST   /missoes/:id/resultado
 GET    /indicadores/consultor/:id
+GET    /indicadores/retencao
 ```
 
 ## Como rodar o app
-
-Na raiz do projeto mobile:
 
 ```bash
 npm install
@@ -79,50 +101,23 @@ Para web:
 npx expo start --web
 ```
 
-## Configuração da API
-
-O arquivo responsável pela conexão é:
-
-```txt
-services/api.ts
-```
-
-Exemplo:
-
-```ts
-export const USE_MOCK = false;
-
-export const api = axios.create({
-  baseURL: "http://localhost:3333",
-  timeout: 8000,
-});
-```
-
-Para testar em celular físico, trocar `localhost` pelo IP da máquina:
-
-```txt
-http://SEU_IP_LOCAL:3333
-```
-
 ## Fluxo de demonstração
 
-1. Abrir o aplicativo.
-2. Fazer login com o consultor.
-3. Visualizar as missões de retenção.
-4. Abrir uma missão de alto risco.
-5. Inserir uma observação.
-6. Registrar uma ação, como "Contato feito" ou "Cliente recuperado".
-7. Ver o histórico atualizado.
-8. Voltar para a lista e confirmar o novo status.
-9. Abrir os indicadores e validar a atualização dos números.
-10. Acessar "Ler / digitar cartão".
-11. Buscar por `CARD-001` ou escanear QR Code.
-12. Abrir a ficha correspondente.
+1. Entrar com o consultor.
+2. Abrir "Minhas missões" e mostrar que a lista vem do Radar de Retenção.
+3. Abrir uma missão de alto risco.
+4. Mostrar score, perfil, motivo, ação recomendada e visão 360.
+5. Registrar "Assumir missão", "Resposta recebida", "Agendou serviço" ou "Cliente recuperado".
+6. Conferir Histórico recente e Memória de Resultado.
+7. Voltar para Indicadores e validar taxa, receita e impacto VIN Share.
+8. Abrir "Ler / digitar cartão" e buscar por `CARD-001` ou `CARD-002`.
 
 ## Relação com a solução
 
-O aplicativo representa a frente mobile da solução Ford Service Pulse. Ele transforma o Cartão de Recuperação em uma ação registrada, permitindo que o consultor execute o contato com o cliente e gere rastreabilidade para os indicadores de retenção.
+O mobile não é o cérebro da solução. Ele executa o ciclo operacional:
 
-## Status do MVP
+```txt
+Motor de Retenção -> Radar de Retenção -> Cartão/Mesa -> App -> Ação -> Resultado -> Indicador
+```
 
-O MVP mobile está funcional com API fake local e pronto para integração com backend real.
+Com isso, a previsão de risco deixa de ser apenas um score e vira ação rastreável, resultado mensurável e aprendizado para a próxima priorização.

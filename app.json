@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "pulso-retencao-mobile",
+    "name": "Pulso de Retenção Ford",
     "slug": "pulso-retencao-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -42,7 +42,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Permitir que o Ford Service Pulse acesse a câmera",
+          "cameraPermission": "Permitir que o Pulso de Retenção Ford acesse a câmera",
           "barcodeScannerEnabled": true
         }
       ]
