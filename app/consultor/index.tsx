@@ -1,9 +1,8 @@
 import { router, useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
-import { limparSessao } from "../../services/storageService";
 import {
-  Alert,
   ActivityIndicator,
+  Alert,
   FlatList,
   Platform,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 } from "react-native";
 
 import { listarMissoes } from "../../services/missaoService";
+import { limparSessao } from "../../services/storageService";
 import { Missao } from "../../types/missao";
 import { formatStatus } from "../../utils/formatStatus";
 
@@ -48,28 +48,6 @@ export default function MissoesScreen() {
     return "#16A34A";
   }
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.loadingText}>Carregando missões...</Text>
-      </View>
-    );
-  }
-
-  if (erro) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorTitle}>Ops...</Text>
-        <Text style={styles.errorText}>{erro}</Text>
-
-        <TouchableOpacity style={styles.retryButton} onPress={carregarMissoes}>
-          <Text style={styles.retryButtonText}>Tentar novamente</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   async function encerrarSessao() {
     try {
       await limparSessao();
@@ -78,13 +56,13 @@ export default function MissoesScreen() {
       console.error(error);
 
       if (Platform.OS === "web") {
-        window.alert("Nao foi possivel encerrar a sessao. Tente novamente.");
+        window.alert("Não foi possível encerrar a sessão. Tente novamente.");
         return;
       }
 
       Alert.alert(
         "Erro ao sair",
-        "Nao foi possivel encerrar a sessao. Tente novamente."
+        "Não foi possível encerrar a sessão. Tente novamente."
       );
     }
   }
@@ -115,17 +93,49 @@ export default function MissoesScreen() {
     ]);
   }
 
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Carregando missões...</Text>
+      </View>
+    );
+  }
+
+  if (erro) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Ops...</Text>
+        <Text style={styles.errorText}>{erro}</Text>
+
+        <TouchableOpacity style={styles.retryButton} onPress={carregarMissoes}>
+          <Text style={styles.retryButtonText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerText}>
           <Text style={styles.title}>Minhas missões</Text>
-          <Text style={styles.subtitle}>Clientes em risco de abandono</Text>
+          <Text style={styles.subtitle}>
+            Missões priorizadas pelo Radar de Retenção
+          </Text>
         </View>
 
         <TouchableOpacity style={styles.logoutButton} onPress={sair}>
           <Text style={styles.logoutText}>Sair</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.contextCard}>
+        <Text style={styles.contextTitle}>Pulso de Retenção Ford</Text>
+        <Text style={styles.contextText}>
+          Motor calcula risco, Radar prioriza o lead e o consultor registra a
+          ação para fechar a Memória de Resultado.
+        </Text>
       </View>
 
       <FlatList
@@ -159,15 +169,19 @@ export default function MissoesScreen() {
             </View>
 
             <Text style={styles.vehicle}>
-              {item.veiculo.modelo} • {item.veiculo.ano}
+              {item.veiculo.modelo} • {item.veiculo.ano} • {item.veiculo.kmAtual.toLocaleString("pt-BR")} km
             </Text>
 
             <Text style={styles.reason}>{item.motivoPrincipal}</Text>
 
+            <View style={styles.metaRow}>
+              <Text style={styles.meta}>Radar {item.prioridadeRadar}</Text>
+              <Text style={styles.meta}>Score {item.score}/100</Text>
+              <Text style={styles.meta}>{formatStatus(item.status)}</Text>
+            </View>
+
             <View style={styles.footer}>
-              <Text style={styles.status}>
-                Status: {formatStatus(item.status)}
-              </Text>
+              <Text style={styles.status}>Canal: {item.cliente.canalPreferido}</Text>
               <Text style={styles.deadline}>Prazo: {item.prazo}</Text>
             </View>
           </TouchableOpacity>
@@ -238,7 +252,7 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 18,
     borderWidth: 1,
     borderColor: "#E5E7EB",
@@ -256,7 +270,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#FFFFFF",
     padding: 16,
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
@@ -275,6 +289,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 4,
+    alignSelf: "flex-start",
   },
   riskText: {
     color: "#FFFFFF",
@@ -290,6 +305,21 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 10,
     lineHeight: 20,
+  },
+  metaRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginTop: 12,
+  },
+  meta: {
+    backgroundColor: "#EEF2FF",
+    color: "#3730A3",
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    fontSize: 12,
+    fontWeight: "800",
   },
   footer: {
     marginTop: 12,
@@ -325,7 +355,10 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  headerText: {
+    flex: 1,
   },
   logoutButton: {
     backgroundColor: "#E5E7EB",
@@ -337,5 +370,20 @@ const styles = StyleSheet.create({
     color: "#111827",
     fontWeight: "800",
     fontSize: 12,
+  },
+  contextCard: {
+    backgroundColor: "#0B1220",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 14,
+  },
+  contextTitle: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    marginBottom: 4,
+  },
+  contextText: {
+    color: "#CBD5E1",
+    lineHeight: 20,
   },
 });

@@ -82,7 +82,7 @@ export default function LoginScreen() {
 
     return (
         <View style={styles.container}>
-            <Text style={styles.logo}>Ford Service Pulse</Text>
+            <Text style={styles.logo}>Pulso de Retenção Ford</Text>
             <Text style={styles.subtitle}>Aplicativo do Consultor</Text>
 
             <View style={styles.form}>
