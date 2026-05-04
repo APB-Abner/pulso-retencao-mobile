@@ -8,7 +8,7 @@ export function formatStatus(status: StatusMissao) {
         resposta_recebida: "Resposta recebida",
         agendado: "Agendado",
         recuperado: "Cliente recuperado",
-        reprogramar: "Reprogramar",
+        reprogramar: "Reprogramado",
         perdido: "Cliente perdido",
     };
 
