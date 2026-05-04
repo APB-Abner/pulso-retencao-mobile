@@ -15,8 +15,8 @@ import {
     buscarMissaoPorId,
     registrarAcaoMissao,
 } from "../../services/missaoService";
+import { Missao, ResultadoMissao, StatusMissao } from "../../types/missao";
 import { formatDateTimeBR } from "../../utils/formatDate";
-import { Missao, StatusMissao } from "../../types/missao";
 import { formatStatus } from "../../utils/formatStatus";
 
 export default function FichaMissaoScreen() {
@@ -55,6 +55,56 @@ export default function FichaMissaoScreen() {
         carregarMissao();
     }, [id]);
 
+    function montarResultado(status: StatusMissao): Omit<ResultadoMissao, "atualizadoEm"> | undefined {
+        if (!missao) return undefined;
+
+        if (status === "agendado") {
+            return {
+                receitaEstimada: missao.valorPotencial,
+                impactoVinShare: missao.impactoVinShareEstimado,
+                proximoPasso: "Aguardar comparecimento do cliente.",
+            };
+        }
+
+        if (status === "recuperado") {
+            return {
+                compareceu: true,
+                servicoPago: true,
+                receitaEstimada: missao.valorPotencial,
+                impactoVinShare: missao.impactoVinShareEstimado,
+                proximoPasso: "Cliente recuperado para a rede Ford.",
+            };
+        }
+
+        if (status === "perdido") {
+            return {
+                compareceu: false,
+                servicoPago: false,
+                receitaEstimada: 0,
+                impactoVinShare: 0,
+                proximoPasso: "Registrar motivo de perda para aprendizagem do Radar.",
+            };
+        }
+
+        if (status === "reprogramar") {
+            return {
+                receitaEstimada: 0,
+                impactoVinShare: 0,
+                proximoPasso: observacao.trim() || "Novo contato a definir.",
+            };
+        }
+
+        if (status === "resposta_recebida") {
+            return {
+                receitaEstimada: 0,
+                impactoVinShare: 0,
+                proximoPasso: "Converter resposta em agendamento ou reprogramação.",
+            };
+        }
+
+        return undefined;
+    }
+
     async function alterarStatus(status: StatusMissao) {
         if (!missao || salvandoStatus) return;
 
@@ -69,6 +119,7 @@ export default function FichaMissaoScreen() {
                 tipo: status,
                 canal: missao.cliente.canalPreferido,
                 observacao: observacaoFinal,
+                resultado: montarResultado(status),
             });
 
             const atualizada = await buscarMissaoPorId(missao.id);
@@ -125,18 +176,41 @@ export default function FichaMissaoScreen() {
         <ScrollView style={styles.container} contentContainerStyle={styles.content}>
             <Text style={styles.title}>{missao.cliente.nome}</Text>
             <Text style={styles.subtitle}>
-                {missao.veiculo.modelo} • {missao.veiculo.ano}
+                {missao.veiculo.modelo} • {missao.veiculo.ano} • {missao.codigoCartao}
             </Text>
 
             <View style={styles.scoreCard}>
-                <Text style={styles.scoreLabel}>Risco de abandono</Text>
+                <Text style={styles.scoreLabel}>Risco calculado pelo Motor de Retenção</Text>
                 <Text style={styles.score}>{missao.score}</Text>
-                <Text style={styles.risk}>{missao.risco.toUpperCase()}</Text>
+                <Text style={styles.risk}>
+                    {missao.risco.toUpperCase()} • Radar {missao.prioridadeRadar}
+                </Text>
+                <Text style={styles.scoreHint}>Score de 0 a 100 para risco de abandono.</Text>
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Perfil</Text>
+                <Text style={styles.sectionTitle}>Visão 360 cliente e veículo</Text>
+                <InfoRow label="Canal preferido" value={missao.cliente.canalPreferido} />
+                <InfoRow label="Telefone" value={missao.cliente.telefoneMascarado} />
+                <InfoRow label="Cidade" value={missao.cliente.cidade} />
+                <InfoRow label="VIN simulado" value={missao.veiculo.vinSimulado} />
+                <InfoRow label="KM atual" value={`${missao.veiculo.kmAtual.toLocaleString("pt-BR")} km`} />
+                <InfoRow label="Última revisão" value={formatDateBR(missao.veiculo.ultimaRevisao)} />
+                <InfoRow label="Dias sem serviço Ford" value={`${missao.veiculo.diasSemServico} dias`} />
+                <InfoRow label="Garantia" value={missao.veiculo.statusGarantia} />
+                <Text style={styles.textMuted}>{missao.cliente.historicoResumo}</Text>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Perfil de retenção</Text>
                 <Text style={styles.text}>{missao.perfil}</Text>
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Sinais do Radar</Text>
+                {missao.sinaisRadar.map((sinal) => (
+                    <Text key={sinal} style={styles.bulletText}>• {sinal}</Text>
+                ))}
             </View>
 
             <View style={styles.section}>
@@ -147,11 +221,14 @@ export default function FichaMissaoScreen() {
             <View style={styles.sectionHighlight}>
                 <Text style={styles.sectionTitle}>Ação recomendada</Text>
                 <Text style={styles.text}>{missao.acaoRecomendada}</Text>
+                <Text style={styles.messageLabel}>Mensagem sugerida</Text>
+                <Text style={styles.text}>{missao.mensagemSugerida}</Text>
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Canal sugerido</Text>
-                <Text style={styles.text}>{missao.cliente.canalPreferido}</Text>
+                <Text style={styles.sectionTitle}>Potencial de impacto</Text>
+                <InfoRow label="Valor potencial" value={formatCurrency(missao.valorPotencial)} />
+                <InfoRow label="Impacto VIN Share" value={`+${missao.impactoVinShareEstimado.toFixed(1)} p.p.`} />
             </View>
 
             <View style={styles.section}>
@@ -168,9 +245,28 @@ export default function FichaMissaoScreen() {
                     textAlignVertical="top"
                 />
 
+                {missao.status === "em_risco" ? (
+                    <ActionButton
+                        label="Assumir missão"
+                        status="assumido"
+                        loadingStatus={salvandoStatus}
+                        disabled={estaSalvando}
+                        onPress={alterarStatus}
+                        variant="secondary"
+                    />
+                ) : null}
+
                 <ActionButton
                     label="Contato feito"
                     status="contato_feito"
+                    loadingStatus={salvandoStatus}
+                    disabled={estaSalvando}
+                    onPress={alterarStatus}
+                />
+
+                <ActionButton
+                    label="Resposta recebida"
+                    status="resposta_recebida"
                     loadingStatus={salvandoStatus}
                     disabled={estaSalvando}
                     onPress={alterarStatus}
@@ -182,6 +278,15 @@ export default function FichaMissaoScreen() {
                     loadingStatus={salvandoStatus}
                     disabled={estaSalvando}
                     onPress={alterarStatus}
+                />
+
+                <ActionButton
+                    label="Reprogramar"
+                    status="reprogramar"
+                    loadingStatus={salvandoStatus}
+                    disabled={estaSalvando}
+                    onPress={alterarStatus}
+                    variant="warning"
                 />
 
                 <ActionButton
@@ -201,6 +306,33 @@ export default function FichaMissaoScreen() {
                     onPress={alterarStatus}
                     variant="danger"
                 />
+            </View>
+
+            <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Memória de Resultado</Text>
+                {missao.resultado ? (
+                    <>
+                        <InfoRow label="Compareceu" value={formatBoolean(missao.resultado.compareceu)} />
+                        <InfoRow label="Serviço pago" value={formatBoolean(missao.resultado.servicoPago)} />
+                        <InfoRow
+                            label="Receita estimada"
+                            value={formatCurrency(missao.resultado.receitaEstimada ?? 0)}
+                        />
+                        <InfoRow
+                            label="Impacto VIN Share"
+                            value={`+${(missao.resultado.impactoVinShare ?? 0).toFixed(1)} p.p.`}
+                        />
+                        <InfoRow label="Próximo passo" value={missao.resultado.proximoPasso ?? "-"} />
+                        <InfoRow
+                            label="Atualizado"
+                            value={formatDateTimeBR(missao.resultado.atualizadoEm)}
+                        />
+                    </>
+                ) : (
+                    <Text style={styles.emptyHistory}>
+                        Ainda sem desfecho estruturado para esta missão.
+                    </Text>
+                )}
             </View>
 
             <View style={styles.section}>
@@ -227,6 +359,12 @@ export default function FichaMissaoScreen() {
                                         {acao.observacao}
                                     </Text>
                                 ) : null}
+
+                                {acao.resultado?.proximoPasso ? (
+                                    <Text style={styles.historyObservation}>
+                                        Próximo passo: {acao.resultado.proximoPasso}
+                                    </Text>
+                                ) : null}
                             </View>
                         ))}
 
@@ -250,13 +388,27 @@ export default function FichaMissaoScreen() {
     );
 }
 
+type InfoRowProps = {
+    label: string;
+    value: string;
+};
+
+function InfoRow({ label, value }: InfoRowProps) {
+    return (
+        <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>{label}</Text>
+            <Text style={styles.infoValue}>{value}</Text>
+        </View>
+    );
+}
+
 type ActionButtonProps = {
     label: string;
     status: StatusMissao;
     loadingStatus: StatusMissao | null;
     disabled: boolean;
     onPress: (status: StatusMissao) => void;
-    variant?: "default" | "success" | "danger";
+    variant?: "default" | "secondary" | "success" | "warning" | "danger";
 };
 
 function ActionButton({
@@ -274,7 +426,11 @@ function ActionButton({
             ? styles.actionButtonSuccess
             : variant === "danger"
                 ? styles.actionButtonDanger
-                : styles.actionButton;
+                : variant === "warning"
+                    ? styles.actionButtonWarning
+                    : variant === "secondary"
+                        ? styles.actionButtonSecondary
+                        : styles.actionButton;
 
     return (
         <TouchableOpacity
@@ -289,6 +445,28 @@ function ActionButton({
             )}
         </TouchableOpacity>
     );
+}
+
+function formatBoolean(value?: boolean) {
+    if (value === undefined) return "-";
+    return value ? "Sim" : "Não";
+}
+
+function formatCurrency(value: number) {
+    return new Intl.NumberFormat("pt-BR", {
+        style: "currency",
+        currency: "BRL",
+    }).format(value);
+}
+
+function formatDateBR(value: string) {
+    const date = new Date(value);
+
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+
+    return new Intl.DateTimeFormat("pt-BR").format(date);
 }
 
 const styles = StyleSheet.create({
@@ -345,7 +523,7 @@ const styles = StyleSheet.create({
     },
     scoreCard: {
         backgroundColor: "#111827",
-        borderRadius: 18,
+        borderRadius: 12,
         padding: 20,
         marginBottom: 16,
     },
@@ -362,10 +540,15 @@ const styles = StyleSheet.create({
         color: "#FCA5A5",
         fontWeight: "800",
     },
+    scoreHint: {
+        color: "#CBD5E1",
+        marginTop: 8,
+        lineHeight: 20,
+    },
     section: {
         backgroundColor: "#FFFFFF",
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 12,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: "#E5E7EB",
@@ -373,7 +556,7 @@ const styles = StyleSheet.create({
     sectionHighlight: {
         backgroundColor: "#EFF6FF",
         padding: 16,
-        borderRadius: 16,
+        borderRadius: 12,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: "#BFDBFE",
@@ -387,6 +570,41 @@ const styles = StyleSheet.create({
         color: "#374151",
         lineHeight: 21,
     },
+    textMuted: {
+        color: "#6B7280",
+        lineHeight: 20,
+        marginTop: 10,
+    },
+    bulletText: {
+        color: "#374151",
+        lineHeight: 22,
+    },
+    messageLabel: {
+        color: "#1D4ED8",
+        fontWeight: "800",
+        marginTop: 12,
+        marginBottom: 4,
+    },
+    infoRow: {
+        flexDirection: "row",
+        justifyContent: "space-between",
+        gap: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: "#F3F4F6",
+        paddingVertical: 7,
+    },
+    infoLabel: {
+        color: "#6B7280",
+        flex: 1,
+        fontSize: 13,
+    },
+    infoValue: {
+        color: "#111827",
+        flex: 1,
+        fontSize: 13,
+        fontWeight: "700",
+        textAlign: "right",
+    },
     actionButton: {
         backgroundColor: "#2563EB",
         padding: 14,
@@ -395,8 +613,24 @@ const styles = StyleSheet.create({
         minHeight: 48,
         justifyContent: "center",
     },
+    actionButtonSecondary: {
+        backgroundColor: "#111827",
+        padding: 14,
+        borderRadius: 12,
+        marginTop: 8,
+        minHeight: 48,
+        justifyContent: "center",
+    },
     actionButtonSuccess: {
         backgroundColor: "#16A34A",
+        padding: 14,
+        borderRadius: 12,
+        marginTop: 8,
+        minHeight: 48,
+        justifyContent: "center",
+    },
+    actionButtonWarning: {
+        backgroundColor: "#D97706",
         padding: 14,
         borderRadius: 12,
         marginTop: 8,

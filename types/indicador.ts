@@ -5,4 +5,8 @@ export type IndicadoresConsultor = {
     agendados: number;
     recuperados: number;
     perdidos: number;
+    taxaRecuperacao: number;
+    taxaAgendamento: number;
+    impactoVinShareEstimado: number;
+    receitaPotencialRecuperada: number;
 };
